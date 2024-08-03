@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from aiohttp.client_exceptions import ClientError
-from pyblu import Input, Player, Preset, Status, SyncStatus
+from pyblu import Input, PairedPlayer, Player, Preset, Status, SyncStatus
 import voluptuous as vol
 
 from homeassistant.components import media_source
@@ -38,7 +38,7 @@ from homeassistant.core import (
 )
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import config_validation as cv, issue_registry as ir
+from homeassistant.helpers import config_validation as cv, issue_registry as ir, entity_registry as er
 from homeassistant.helpers.device_registry import (
     CONNECTION_NETWORK_MAC,
     DeviceInfo,
@@ -631,7 +631,8 @@ class BluesoundPlayer(MediaPlayerEntity):
         if self._status.can_seek:
             supported = supported | MediaPlayerEntityFeature.SEEK
 
-        return supported
+        # TODO: this need cleanup
+        return supported | MediaPlayerEntityFeature.GROUPING
 
     @property
     def is_master(self) -> bool:
@@ -856,3 +857,28 @@ class BluesoundPlayer(MediaPlayerEntity):
             media_content_id,
             content_filter=lambda item: item.media_content_type.startswith("audio/"),
         )
+
+    async def async_join_players(self, group_members: list[str]) -> None:
+        entity_registry = er.async_get(self.hass)
+
+        entity_entries = [entity_registry.async_get(x) for x in group_members if x != self.entity_id]
+        entity_entries = [x for x in entity_entries if x is not None]
+
+        config_entries = [
+            self.hass.config_entries.async_get_entry(x.config_entry_id)
+            for x in entity_entries
+        ]
+        config_entries = [x for x in config_entries if x is not None]
+
+        if len(config_entries) == 0:
+            return
+
+        # TODO: get host and port from config_entries
+        paired_players = [PairedPlayer(x.runtime_data.player.) for x in config_entries]
+
+        result_paired_players = await self._player.add_slaves(paired_players)
+        # TODO: check if all players were added; raise error if not?
+
+
+    async def async_unjoin_players(self) -> None:
+        raise NotImplementedError
