@@ -39,6 +39,7 @@ from homeassistant.core import (
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv, issue_registry as ir
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.device_registry import (
     CONNECTION_NETWORK_MAC,
     DeviceInfo,
@@ -108,12 +109,6 @@ class ServiceMethodDetails(NamedTuple):
 SERVICE_TO_METHOD = {
     SERVICE_JOIN: ServiceMethodDetails(method="async_join", schema=BS_JOIN_SCHEMA),
     SERVICE_UNJOIN: ServiceMethodDetails(method="async_unjoin", schema=BS_SCHEMA),
-    SERVICE_SET_TIMER: ServiceMethodDetails(
-        method="async_increase_timer", schema=BS_SCHEMA
-    ),
-    SERVICE_CLEAR_TIMER: ServiceMethodDetails(
-        method="async_clear_timer", schema=BS_SCHEMA
-    ),
 }
 
 
@@ -199,6 +194,16 @@ async def async_setup_entry(
         config_entry.runtime_data.player,
         config_entry.runtime_data.sync_status,
     )
+
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        SERVICE_SET_TIMER,
+        None,
+        "async_increase_timer")
+    platform.async_register_entity_service(
+        SERVICE_CLEAR_TIMER,
+        None,
+        "async_clear_timer")
 
     hass.data[DATA_BLUESOUND].append(bluesound_player)
     async_add_entities([bluesound_player])
