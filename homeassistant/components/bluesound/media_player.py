@@ -7,7 +7,7 @@ from asyncio import CancelledError, Task
 from contextlib import suppress
 from datetime import datetime, timedelta
 import logging
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any
 
 from pyblu import Input, Player, Preset, Status, SyncStatus
 from pyblu.errors import PlayerUnreachableError
@@ -24,22 +24,15 @@ from homeassistant.components.media_player import (
     async_process_play_media_url,
 )
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    CONF_HOST,
-    CONF_HOSTS,
-    CONF_NAME,
-    CONF_PORT,
-)
-from homeassistant.core import (
-    DOMAIN as HOMEASSISTANT_DOMAIN,
-    HomeAssistant,
-    ServiceCall,
-)
+from homeassistant.const import CONF_HOST, CONF_HOSTS, CONF_NAME, CONF_PORT
+from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN, HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import config_validation as cv, issue_registry as ir
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import (
+    config_validation as cv,
+    entity_platform,
+    issue_registry as ir,
+)
 from homeassistant.helpers.device_registry import (
     CONNECTION_NETWORK_MAC,
     DeviceInfo,
@@ -94,23 +87,6 @@ PLATFORM_SCHEMA = MEDIA_PLAYER_PLATFORM_SCHEMA.extend(
     }
 )
 
-BS_SCHEMA = vol.Schema({vol.Optional(ATTR_ENTITY_ID): cv.entity_ids})
-
-BS_JOIN_SCHEMA = BS_SCHEMA.extend({vol.Required(ATTR_MASTER): cv.entity_id})
-
-
-class ServiceMethodDetails(NamedTuple):
-    """Details for SERVICE_TO_METHOD mapping."""
-
-    method: str
-    schema: vol.Schema
-
-
-SERVICE_TO_METHOD = {
-    SERVICE_JOIN: ServiceMethodDetails(method="async_join", schema=BS_JOIN_SCHEMA),
-    SERVICE_UNJOIN: ServiceMethodDetails(method="async_unjoin", schema=BS_SCHEMA),
-}
-
 
 async def _async_import(hass: HomeAssistant, config: ConfigType) -> None:
     """Import config entry from configuration.yaml."""
@@ -155,33 +131,6 @@ async def _async_import(hass: HomeAssistant, config: ConfigType) -> None:
     )
 
 
-def setup_services(hass: HomeAssistant) -> None:
-    """Set up services for Bluesound component."""
-
-    async def async_service_handler(service: ServiceCall) -> None:
-        """Map services to method of Bluesound devices."""
-        if not (method := SERVICE_TO_METHOD.get(service.service)):
-            return
-
-        params = {
-            key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID
-        }
-        if entity_ids := service.data.get(ATTR_ENTITY_ID):
-            target_players = [
-                player for player in hass.data[DOMAIN] if player.entity_id in entity_ids
-            ]
-        else:
-            target_players = hass.data[DOMAIN]
-
-        for player in target_players:
-            await getattr(player, method.method)(**params)
-
-    for service, method in SERVICE_TO_METHOD.items():
-        hass.services.async_register(
-            DOMAIN, service, async_service_handler, schema=method.schema
-        )
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: BluesoundConfigEntry,
@@ -197,13 +146,15 @@ async def async_setup_entry(
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(
-        SERVICE_SET_TIMER,
-        None,
-        "async_increase_timer")
+        SERVICE_SET_TIMER, None, "async_increase_timer"
+    )
     platform.async_register_entity_service(
-        SERVICE_CLEAR_TIMER,
-        None,
-        "async_clear_timer")
+        SERVICE_CLEAR_TIMER, None, "async_clear_timer"
+    )
+    platform.async_register_entity_service(
+        SERVICE_JOIN, {vol.Required(ATTR_MASTER): cv.entity_id}, "async_join"
+    )
+    platform.async_register_entity_service(SERVICE_UNJOIN, None, "async_unjoin")
 
     hass.data[DATA_BLUESOUND].append(bluesound_player)
     async_add_entities([bluesound_player])
