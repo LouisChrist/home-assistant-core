@@ -28,27 +28,17 @@ from homeassistant.helpers import (
     entity_registry as er,
     issue_registry as ir,
 )
-from homeassistant.helpers.device_registry import (
-    CONNECTION_NETWORK_MAC,
-    DeviceInfo,
-    format_mac,
-)
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util, slugify
 
 from .const import ATTR_BLUESOUND_GROUP, ATTR_MASTER, DOMAIN
 from .coordinator import BluesoundCoordinator
-from .utils import (
-    dispatcher_join_signal,
-    dispatcher_unjoin_signal,
-    format_unique_id,
-    id_to_paired_player,
-)
+from .entity import BluesoundEntity
+from .utils import dispatcher_join_signal, dispatcher_unjoin_signal, id_to_paired_player
 
 if TYPE_CHECKING:
     from . import BluesoundConfigEntry
@@ -58,8 +48,6 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=15)
 
 DATA_BLUESOUND = DOMAIN
-DEFAULT_PORT = 11000
-
 SERVICE_CLEAR_TIMER = "clear_sleep_timer"
 SERVICE_JOIN = "join"
 SERVICE_SET_TIMER = "set_sleep_timer"
@@ -98,7 +86,7 @@ async def async_setup_entry(
     async_add_entities([bluesound_player], update_before_add=True)
 
 
-class BluesoundPlayer(CoordinatorEntity[BluesoundCoordinator], MediaPlayerEntity):
+class BluesoundPlayer(BluesoundEntity, MediaPlayerEntity):
     """Representation of a Bluesound Player."""
 
     _attr_media_content_type = MediaType.MUSIC
@@ -113,8 +101,13 @@ class BluesoundPlayer(CoordinatorEntity[BluesoundCoordinator], MediaPlayerEntity
         player: Player,
     ) -> None:
         """Initialize the media player."""
-        super().__init__(coordinator)
         sync_status = coordinator.data.sync_status
+        super().__init__(
+            coordinator,
+            player,
+            port=port,
+            sync_status=sync_status,
+        )
 
         self.host = host
         self.port = port
@@ -130,29 +123,7 @@ class BluesoundPlayer(CoordinatorEntity[BluesoundCoordinator], MediaPlayerEntity
         self._group_list: list[str] = []
         self._group_members: list[str] | None = None
         self._bluesound_device_name = sync_status.name
-        self._player = player
         self._last_status_update = dt_util.utcnow()
-
-        self._attr_unique_id = format_unique_id(sync_status.mac, port)
-        # there should always be one player with the default port per mac
-        if port == DEFAULT_PORT:
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, format_mac(sync_status.mac))},
-                connections={(CONNECTION_NETWORK_MAC, format_mac(sync_status.mac))},
-                name=sync_status.name,
-                manufacturer=sync_status.brand,
-                model=sync_status.model_name,
-                model_id=sync_status.model,
-            )
-        else:
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, format_unique_id(sync_status.mac, port))},
-                name=sync_status.name,
-                manufacturer=sync_status.brand,
-                model=sync_status.model_name,
-                model_id=sync_status.model,
-                via_device=(DOMAIN, format_mac(sync_status.mac)),
-            )
 
     async def async_added_to_hass(self) -> None:
         """Start the polling task."""

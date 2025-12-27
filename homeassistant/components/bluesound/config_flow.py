@@ -12,8 +12,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
-from .const import DOMAIN
-from .media_player import DEFAULT_PORT
+from .const import DEFAULT_PORT, DOMAIN
 from .utils import format_unique_id
 
 _LOGGER = logging.getLogger(__name__)
@@ -66,7 +65,7 @@ class BluesoundConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_HOST): str,
-                    vol.Optional(CONF_PORT, default=11000): int,
+                    vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
                 }
             ),
         )
