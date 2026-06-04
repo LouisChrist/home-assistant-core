@@ -1,16 +1,17 @@
 rules:
-  # bronze
+  # Bronze
   action-setup: done
   appropriate-polling: done
   brands: done
   common-modules:
     status: todo
-    comment: No base entity
+    comment: >-
+      No base entity. BluesoundPlayer (media_player.py) and BluesoundButton
+      (button.py) duplicate the DeviceInfo setup; move it to a shared base
+      entity in entity.py.
   config-flow-test-coverage: done
   config-flow: done
-  dependency-transparency:
-    status: todo
-    comment: pyblu build and publish is currently done locally.
+  dependency-transparency: done
   docs-actions: done
   docs-high-level-description: done
   docs-installation-instructions: done
@@ -22,3 +23,65 @@ rules:
   test-before-configure: done
   test-before-setup: done
   unique-config-entry: done
+
+  # Silver
+  action-exceptions: done
+  config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
+  entity-unavailable: done
+  integration-owner: done
+  log-when-unavailable:
+    status: todo
+    comment: >-
+      The coordinator logs once when the player becomes unreachable via
+      async_set_update_error, but it never logs once on reconnection because
+      _async_update_data only returns cached data and updates are pushed via
+      async_set_updated_data (which logs at debug only).
+  parallel-updates: todo
+  reauthentication-flow:
+    status: exempt
+    comment: >-
+      The integration uses unauthenticated local HTTP (host/port only) and
+      requires no credentials.
+  test-coverage: todo
+
+  # Gold
+  devices: done
+  diagnostics: todo
+  discovery-update-info: done
+  discovery: done
+  docs-data-update: todo
+  docs-examples: todo
+  docs-known-limitations: todo
+  docs-supported-devices: todo
+  docs-supported-functions: done
+  docs-troubleshooting: todo
+  docs-use-cases: todo
+  dynamic-devices:
+    status: exempt
+    comment: >-
+      Each config entry maps to a single physical player. There is no hub or
+      account that could expose additional devices after setup.
+  entity-category: done
+  entity-device-class:
+    status: done
+    comment: >-
+      No device classes are applicable to the media player or the sleep-timer
+      buttons.
+  entity-disabled-by-default: done
+  entity-translations: done
+  exception-translations: todo
+  icon-translations: done
+  reconfiguration-flow: todo
+  repair-issues: done
+  stale-devices:
+    status: exempt
+    comment: >-
+      Each config entry maps to a single device; removing the config entry
+      removes the device. No hub/account can leave a stale device behind.
+
+  # Platinum
+  async-dependency: done
+  inject-websession: done
+  strict-typing: done
