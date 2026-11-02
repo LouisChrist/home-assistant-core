@@ -236,3 +236,79 @@ async def test_zeroconf_flow_no_ipv4_address(hass: HomeAssistant) -> None:
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "no_ipv4_address"
+
+
+async def test_reconfigure_flow_success(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    player_mocks: PlayerMocks,
+    config_entry: MockConfigEntry,
+) -> None:
+    """Test reconfiguring the host of a player."""
+    config_entry.add_to_hass(hass)
+    result = await config_entry.start_reconfigure_flow(hass)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+    assert result["errors"] == {}
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_HOST: "1.1.1.2"}
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert config_entry.data == {CONF_HOST: "1.1.1.2", CONF_PORT: 11000}
+
+    player_mocks.player_data_for_already_configured.player.sync_status.assert_called_once()
+
+
+async def test_reconfigure_flow_cannot_connect(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    player_mocks: PlayerMocks,
+    config_entry: MockConfigEntry,
+) -> None:
+    """Test reconfiguring recovers after a connection error."""
+    config_entry.add_to_hass(hass)
+    result = await config_entry.start_reconfigure_flow(hass)
+
+    sync_status_mock = (
+        player_mocks.player_data_for_already_configured.sync_status_long_polling_mock
+    )
+    sync_status_mock.set_error(PlayerUnreachableError("Player not reachable"))
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_HOST: "1.1.1.2"}
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+    assert result["errors"] == {"base": "cannot_connect"}
+    assert config_entry.data[CONF_HOST] == "1.1.1.1"
+
+    sync_status_mock.set_error(None)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_HOST: "1.1.1.2"}
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert config_entry.data[CONF_HOST] == "1.1.1.2"
+
+
+async def test_reconfigure_flow_wrong_device(
+    hass: HomeAssistant,
+    player_mocks: PlayerMocks,
+    config_entry: MockConfigEntry,
+) -> None:
+    """Test reconfiguring aborts when the host is a different player."""
+    config_entry.add_to_hass(hass)
+    result = await config_entry.start_reconfigure_flow(hass)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_HOST: "2.2.2.2"}
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "wrong_device"
+    assert config_entry.data[CONF_HOST] == "1.1.1.1"

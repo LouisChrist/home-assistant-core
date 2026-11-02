@@ -70,7 +70,7 @@ rules:
   icon-translations:
     status: exempt
     comment: The integration does not define custom entity icons.
-  reconfiguration-flow: todo
+  reconfiguration-flow: done
   repair-issues:
     status: exempt
     comment: The integration has no known user-actionable repair conditions.

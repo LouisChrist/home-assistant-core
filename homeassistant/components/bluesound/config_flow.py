@@ -71,6 +71,40 @@ class BluesoundConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
         )
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle reconfiguration of the player host."""
+        reconfigure_entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            port = reconfigure_entry.data[CONF_PORT]
+            session = async_get_clientsession(self.hass)
+            async with Player(user_input[CONF_HOST], port, session=session) as player:
+                try:
+                    sync_status = await player.sync_status(timeout=1)
+                except PlayerUnreachableError:
+                    errors["base"] = "cannot_connect"
+                else:
+                    await self.async_set_unique_id(
+                        format_unique_id(sync_status.mac, port)
+                    )
+                    self._abort_if_unique_id_mismatch(reason="wrong_device")
+
+                    return self.async_update_reload_and_abort(
+                        reconfigure_entry,
+                        data_updates={CONF_HOST: user_input[CONF_HOST]},
+                    )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            errors=errors,
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema({probatio.Required(CONF_HOST): str}),
+                user_input or reconfigure_entry.data,
+            ),
+        )
+
     @override
     async def async_step_zeroconf(
         self, discovery_info: ZeroconfServiceInfo

@@ -3,7 +3,8 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_service%]",
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "no_ipv4_address": "No IPv4 address found."
+      "no_ipv4_address": "No IPv4 address found.",
+      "wrong_device": "The Bluesound player at this host does not match the configured player. Make sure you entered the correct host."
     },
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
@@ -12,6 +13,14 @@
       "confirm": {
         "description": "[%key:common::config_flow::description::confirm_setup%]",
         "title": "Discover Bluesound player"
+      },
+      "reconfigure": {
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]"
+        },
+        "data_description": {
+          "host": "[%key:component::bluesound::config::step::user::data_description::host%]"
+        }
       },
       "user": {
         "data": {
